@@ -31,8 +31,8 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   
   // UPI payment details
-  const upiId = 'mernstackdeveloper@axl'; 
-  const name = 'Dhiyochamp';
+  const upiId = 'techvisiona@axl'; 
+  const name = 'sharptech';
   
   // Payment apps configuration with text-only display
   const paymentApps = [
