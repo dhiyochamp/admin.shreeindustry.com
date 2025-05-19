@@ -24,42 +24,38 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import { generateUpiQr } from '@/utils/generateUpiQr';
 import { v4 as uuidv4 } from 'uuid';
-
-// Custom CSS for enhanced UI across all devices
 import './admin-panel.css';
 
 export default function AdminPanel() {
   const router = useRouter();
   const dispatch = useDispatch();
   
-  // Create the Supabase client
+  // Supabase client
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || '',
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
   );
   
-  // Main application state
-  const [currentStep, setCurrentStep] = useState(1); // 1: Plan Selection, 2: Payment, 3: Verification, 4: Credentials, 5: Login
+  // Main state
+  const [currentStep, setCurrentStep] = useState(1); // 1: Plan Selection, 2: Payment, 3: Credentials, 4: Login
   const [isLoading, setIsLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState('6month');
   const [errors, setErrors] = useState({});
   
-  // Payment related state
+  // Payment state
   const [qr, setQr] = useState('');
   const [amount, setAmount] = useState(18000);
   const [customAmount, setCustomAmount] = useState('');
   const [isCustomPayment, setIsCustomPayment] = useState(false);
-  const [paymentVerifying, setPaymentVerifying] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [amountError, setAmountError] = useState('');
   const [customerId, setCustomerId] = useState('');
   const [transactionId, setTransactionId] = useState('');
-  const [transactionError, setTransactionError] = useState('');
   const [copiedUpi, setCopiedUpi] = useState(false);
   const [copiedCustomerId, setCopiedCustomerId] = useState(false);
   
-  // Customer information state
+  // Customer info
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -67,7 +63,7 @@ export default function AdminPanel() {
   const [customerEmailError, setCustomerEmailError] = useState('');
   const [customerPhoneError, setCustomerPhoneError] = useState('');
   
-  // Credentials state
+  // Credentials
   const [credentialsGenerated, setCredentialsGenerated] = useState(false);
   const [generatedCredentials, setGeneratedCredentials] = useState({
     email: '',
@@ -75,12 +71,12 @@ export default function AdminPanel() {
     expiryDate: ''
   });
   
-  // UPI payment details
+  // UPI details
   const upiId = 'techvisiona@axl'; 
   const name = 'Shree Industry';
-  const MIN_AMOUNT = 1; // Minimum payment amount
+  const MIN_AMOUNT = 3000; // Minimum payment amount
   
-  // Payment apps configuration with text-only display
+  // Payment apps
   const paymentApps = [
     { name: 'PhonePe', color: '#5f259f' },
     { name: 'Google Pay', color: '#2da94f' },
@@ -130,7 +126,7 @@ export default function AdminPanel() {
     remember: false
   });
 
-  // Generate customer ID when component mounts
+  // Generate customer ID on mount
   useEffect(() => {
     const newCustomerId = uuidv4().substring(0, 8).toUpperCase();
     setCustomerId(newCustomerId);
@@ -143,7 +139,7 @@ export default function AdminPanel() {
         let paymentAmount = isCustomPayment ? parseInt(customAmount) : plans[selectedPlan].amount;
         
         if (isNaN(paymentAmount) || paymentAmount < MIN_AMOUNT) {
-          return; // Don't generate QR if amount is invalid
+          return;
         }
 
         const qrCode = await generateUpiQr({
@@ -166,7 +162,7 @@ export default function AdminPanel() {
     }
   }, [selectedPlan, customAmount, isCustomPayment, currentStep, paymentCompleted, customerId]);
 
-  // Update payment mode and amount when plan changes
+  // Update payment mode when plan changes
   useEffect(() => {
     if (selectedPlan === 'custom') {
       setIsCustomPayment(true);
@@ -181,10 +177,9 @@ export default function AdminPanel() {
 
   // Handle custom amount changes
   const handleCustomAmountChange = (e) => {
-    const value = e.target.value.replace(/[^0-9]/g, ''); // Allow only numbers
+    const value = e.target.value.replace(/[^0-9]/g, '');
     setCustomAmount(value);
     
-    // Validate minimum amount
     if (value && parseInt(value) < MIN_AMOUNT) {
       setAmountError(`Minimum payment amount is ₹${MIN_AMOUNT.toLocaleString()}`);
     } else {
@@ -269,7 +264,7 @@ export default function AdminPanel() {
     return isValid;
   };
 
-  // Handle proceeding to payment after plan selection
+  // Proceed to payment
   const handleProceedToPayment = () => {
     if (validateUserDetails()) {
       setCurrentStep(2);
@@ -277,57 +272,45 @@ export default function AdminPanel() {
     }
   };
 
-  // Payment verification handlers
-  const handleTransactionIdChange = (e) => {
-    setTransactionId(e.target.value);
-    setTransactionError('');
-  };
-
-  const handlePaymentVerification = async () => {
-    // Validate transaction ID
-    if (!transactionId.trim()) {
-      setTransactionError("Please enter the transaction ID from your payment");
-      return;
-    }
-    
+  // Save payment record to database
+  const savePaymentRecord = async () => {
     try {
-      setPaymentVerifying(true);
+      setIsLoading(true);
       
-      // Create a unique order ID
-      const orderId = uuidv4();
-      
-      // Get the current payment amount
+      // Get payment amount
       const paymentAmount = isCustomPayment ? parseInt(customAmount) : plans[selectedPlan].amount;
       
-      // In a real application, you would verify the payment with your payment provider here
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Save payment data to Supabase with the updated schema
-      const { error } = await supabase
+      // Save payment data to Supabase
+      const { data, error } = await supabase
         .from('payment')
         .insert([{
           amount: paymentAmount,
-          payment_status: 'pending',
-          order_id: orderId,
+          payment_status: 'completed',
+          order_id: uuidv4(),
           customer_id: customerId,
-          transaction_id: transactionId,
+          transaction_id: transactionId || 'manual-' + Date.now(),
           plan_type: selectedPlan,
           customer_name: customerName,
           customer_email: customerEmail,
           customer_phone: customerPhone,
-          created_at: new Date().toISOString()
-        }]);
+          created_at: new Date().toISOString(),
+          verified: false // Mark as manually entered (not verified)
+        }])
+        .select();
         
       if (error) throw error;
       
       setPaymentCompleted(true);
       setCurrentStep(3);
       window.scrollTo(0, 0);
+      
+      return data;
     } catch (error) {
-      console.error("Payment verification error:", error);
-      setTransactionError("Payment verification failed. Please try again or contact support.");
+      console.error("Payment recording error:", error);
+      setErrors({ general: "Failed to record payment. Please try again or contact support." });
+      throw error;
     } finally {
-      setPaymentVerifying(false);
+      setIsLoading(false);
     }
   };
 
@@ -336,8 +319,8 @@ export default function AdminPanel() {
     try {
       setIsLoading(true);
       
-      // In a real application, this would be handled securely by your backend
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // First save the payment record
+      await savePaymentRecord();
       
       // Generate expiry date based on selected plan
       const now = new Date();
@@ -390,55 +373,10 @@ export default function AdminPanel() {
   // Copy generated password
   const copyPassword = () => {
     navigator.clipboard.writeText(generatedCredentials.password);
-    setTimeout(() => {
-      // Show a temporary toast or notification for copied password
-    }, 3000);
+    // Show a temporary toast or notification for copied password
   };
 
-  // Responsive plan cards with enhanced design
-  const renderPlanCards = () => (
-    Object.entries(plans).map(([key, plan]) => (
-      <div 
-        key={key}
-        className={`relative p-5 border-2 rounded-xl cursor-pointer transition-all hover:shadow-md
-          ${selectedPlan === key ? 'border-blue-500 bg-blue-50 shadow-md' : 'border-gray-200 hover:border-blue-300'}
-          ${key === 'custom' ? 'col-span-1 md:col-span-3 lg:col-span-1' : ''}`}
-        onClick={() => setSelectedPlan(key)}
-      >
-        {plan.popular && (
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">
-            BEST VALUE
-          </div>
-        )}
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-gray-800 text-lg">
-            {plan.label}
-          </h3>
-          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all
-            ${selectedPlan === key ? 'border-blue-500 bg-blue-500 scale-110' : 'border-gray-300'}`}>
-            {selectedPlan === key && <FaCheck className="text-white text-xs" />}
-          </div>
-        </div>
-        
-        <div className="text-lg font-bold text-blue-600 mb-3">
-          {plan.price}
-        </div>
-        
-        <ul className="mt-3 space-y-2">
-          {plan.features.map((feature, index) => (
-            <li key={index} className="text-sm flex items-center text-gray-600">
-              <div className="bg-blue-100 p-1 rounded-full mr-2">
-                <FaCheck className="text-blue-600 text-xs" />
-              </div>
-              <span>{feature}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    ))
-  );
-
-  // Common card component for consistent styling
+  // Common card component
   const Card = ({ children, className = "" }) => (
     <div className={`bg-white border border-gray-100 rounded-2xl shadow-sm p-6 ${className}`}>
       {children}
@@ -467,7 +405,7 @@ export default function AdminPanel() {
     );
   };
 
-  // Input field with label and error handling
+  // Input field component
   const InputField = ({ 
     label, 
     type = "text", 
@@ -510,7 +448,7 @@ export default function AdminPanel() {
     </div>
   );
 
-  // Button component for consistent styling
+  // Button component
   const Button = ({ 
     onClick, 
     disabled = false, 
@@ -553,7 +491,6 @@ export default function AdminPanel() {
     const steps = [
       { label: "Select Plan", icon: <FaCrown /> },
       { label: "Payment", icon: <FaCreditCard /> },  
-      { label: "Verification", icon: <FaShieldAlt /> }, 
       { label: "Credentials", icon: <FaLock /> }
     ];
     
@@ -608,7 +545,7 @@ export default function AdminPanel() {
               </div>
               <button 
                 onClick={() => {
-                  setCurrentStep(5);
+                  setCurrentStep(4);
                   window.scrollTo(0, 0);
                 }}
                 className="text-blue-600 hover:text-blue-700 text-sm flex items-center"
@@ -620,7 +557,45 @@ export default function AdminPanel() {
             <ErrorAlert message={errors.general} />
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              {renderPlanCards()}
+              {Object.entries(plans).map(([key, plan]) => (
+                <div 
+                  key={key}
+                  className={`relative p-5 border-2 rounded-xl cursor-pointer transition-all hover:shadow-md
+                    ${selectedPlan === key ? 'border-blue-500 bg-blue-50 shadow-md' : 'border-gray-200 hover:border-blue-300'}
+                    ${key === 'custom' ? 'col-span-1 md:col-span-3 lg:col-span-1' : ''}`}
+                  onClick={() => setSelectedPlan(key)}
+                >
+                  {plan.popular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">
+                      BEST VALUE
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-gray-800 text-lg">
+                      {plan.label}
+                    </h3>
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all
+                      ${selectedPlan === key ? 'border-blue-500 bg-blue-500 scale-110' : 'border-gray-300'}`}>
+                      {selectedPlan === key && <FaCheck className="text-white text-xs" />}
+                    </div>
+                  </div>
+                  
+                  <div className="text-lg font-bold text-blue-600 mb-3">
+                    {plan.price}
+                  </div>
+                  
+                  <ul className="mt-3 space-y-2">
+                    {plan.features.map((feature, index) => (
+                      <li key={index} className="text-sm flex items-center text-gray-600">
+                        <div className="bg-blue-100 p-1 rounded-full mr-2">
+                          <FaCheck className="text-blue-600 text-xs" />
+                        </div>
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </div>
             
             {isCustomPayment && (
@@ -745,7 +720,6 @@ export default function AdminPanel() {
               }}
               className="text-blue-600 hover:text-blue-700 mb-6 flex items-center"
             >
-
               <FaArrowLeft className="mr-2" /> Back to Plan Selection
             </button>
             
@@ -810,31 +784,30 @@ export default function AdminPanel() {
                 </div>
               </Card>
               
-              {/* Payment Verification Card */}
+              {/* Payment Recording Card */}
               <Card>
-                <h3 className="text-gray-800 font-medium mb-4">Verify Your Payment</h3>
+                <h3 className="text-gray-800 font-medium mb-4">Record Your Payment</h3>
                 
-                <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6">
+                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
                   <div className="flex">
                     <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z" clipRule="evenodd" />
                       </svg>
                     </div>
                     <div className="ml-3">
-                      <p className="text-sm text-yellow-700">
-                        After making the payment, enter your transaction ID below to verify your payment.
+                      <p className="text-sm text-blue-700">
+                        After making the payment, click below to record your payment and generate credentials.
                       </p>
                     </div>
                   </div>
                 </div>
                 
                 <InputField
-                  label="Transaction ID"
+                  label="Transaction ID (Optional)"
                   value={transactionId}
-                  onChange={handleTransactionIdChange}
-                  error={transactionError}
-                  placeholder="Enter transaction ID from your payment app"
+                  onChange={(e) => setTransactionId(e.target.value)}
+                  placeholder="Enter transaction ID if available"
                   icon={<FaReceipt className="text-gray-400" />}
                 />
                 
@@ -857,67 +830,15 @@ export default function AdminPanel() {
                 </div>
                 
                 <Button 
-                  onClick={handlePaymentVerification}
-                  disabled={!transactionId.trim()}
-                  isLoading={paymentVerifying}
+                  onClick={generateCredentials}
+                  isLoading={isLoading}
                   fullWidth
+                  variant="success"
                 >
-                  Verify Payment
+                  Record Payment & Generate Credentials
                 </Button>
               </Card>
             </div>
-          </div>
-        );
-        
-      case 3: // Payment Verification Success
-        return (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-2 flex items-center">
-              <FaShieldAlt className="text-green-500 mr-3" />
-              Payment Verification
-            </h2>
-            
-            <Card className="text-center py-8">
-              <div className="flex justify-center mb-6">
-                <div className="bg-green-100 p-4 rounded-full">
-                  <FaCheckCircle className="text-green-500 text-4xl" />
-                </div>
-              </div>
-              
-              <h3 className="text-xl font-bold text-gray-800 mb-2">
-                Payment Successfully Verified!
-              </h3>
-              
-              <p className="text-gray-600 mb-6">
-                Your payment of <span className="font-medium">₹{amount.toLocaleString()}</span> has been successfully verified.
-                We are now processing your subscription activation.
-              </p>
-              
-              <div className="mb-6 p-4 bg-blue-50 rounded-lg max-w-md mx-auto">
-                <div className="text-sm text-left mb-2">
-                  <div className="flex justify-between mb-1">
-                    <span className="text-gray-600">Customer ID:</span>
-                    <span className="font-medium">{customerId}</span>
-                  </div>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-gray-600">Plan:</span>
-                    <span className="font-medium">{plans[selectedPlan].label}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Amount Paid:</span>
-                    <span className="font-medium">₹{amount.toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
-              
-              <Button
-                onClick={generateCredentials}
-                isLoading={isLoading}
-                variant="success"
-              >
-                Generate Your Login Credentials
-              </Button>
-            </Card>
           </div>
         );
         
