@@ -1,6 +1,6 @@
 /* admin-panel.css - Improved Version */
 
-/* Base styles for better overall appearance */
+/* Base styles for better overall appearance and universal visibility */
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
@@ -9,27 +9,44 @@
 }
 
 html, body {
-  height: 100%;
-  width: 100%;
+  height: 100% !important;
+  width: 100% !important;
   margin: 0;
   padding: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   scroll-behavior: smooth;
   overflow-x: hidden;
   position: relative;
+  -webkit-text-size-adjust: 100%; /* Prevents text size adjustment on orientation change */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Proper window sizing - ensures content takes full viewport */
+/* Proper window sizing - ensures content takes full viewport on ALL devices */
 .min-h-screen {
-  min-height: 100vh;
-  width: 100vw;
-  max-width: 100%; /* Prevents horizontal overflow */
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-  padding-bottom: env(safe-area-inset-bottom); /* iOS safe area */
-  position: relative;
+  min-height: 100vh !important;
+  height: 100vh !important; /* Force full height */
+  height: calc(var(--vh, 1vh) * 100) !important; /* Mobile viewport height fix */
+  width: 100vw !important;
+  max-width: 100% !important; /* Prevents horizontal overflow */
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important; /* Smooth scrolling on iOS */
+  padding-bottom: env(safe-area-inset-bottom) !important; /* iOS safe area */
+  position: relative !important;
+  display: block !important;
+  visibility: visible !important;
 }
+
+/* JavaScript for mobile viewport fix - add to your JS file:
+function fixViewportHeight() {
+  let vh = window.innerHeight * 0.01;
+  document.documentElement.style.setProperty('--vh', `${vh}px`);
+}
+window.addEventListener('load', fixViewportHeight);
+window.addEventListener('resize', fixViewportHeight);
+window.addEventListener('orientationchange', fixViewportHeight);
+*/
 
 /* Fixed position background gradient */
 .bg-gradient-to-b {
@@ -55,18 +72,28 @@ html, body {
   visibility: visible !important; /* Force visibility */
 }
 
-/* Show/Hide content with animation */
+/* Show/Hide content with animation - Works on all devices */
 .hidden {
-  display: none;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.3s ease, visibility 0.3s ease;
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  width: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  left: -9999px !important;
 }
 
 .visible {
-  display: block;
-  opacity: 1;
-  visibility: visible;
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  height: auto !important;
+  width: auto !important;
+  overflow: visible !important;
+  pointer-events: auto !important;
+  position: static !important;
   transition: opacity 0.3s ease, visibility 0s;
 }
 
@@ -152,86 +179,100 @@ html, body {
   z-index: 50; /* Higher z-index for overlay elements */
 }
 
-/* Improved QR code styling and animation */
+/* QR code with enhanced animations and perfect visibility across all devices */
 .qr-code-container {
-  position: relative;
-  width: 100%;
-  max-width: 250px;
-  margin: 0 auto;
-  overflow: hidden;
-  transition: transform 0.3s ease;
+  position: relative !important;
+  width: 100% !important;
+  max-width: 250px !important;
+  margin: 0 auto !important;
+  overflow: visible !important; /* Ensure visibility of animations */
+  transition: transform 0.3s ease !important;
+  display: block !important;
+  visibility: visible !important;
+  background-color: white !important;
+  padding: 1rem !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
 }
 
 .qr-code-container:hover {
-  transform: scale(1.05);
+  transform: scale(1.05) !important;
 }
 
-/* QR Code fade-in animation */
+/* QR Code fade-in animation - visible on all devices */
 .qr-code-animation {
-  opacity: 0;
-  transform: translateY(10px);
-  animation: fadeInUp 0.6s ease forwards;
+  opacity: 0 !important;
+  transform: translateY(10px) !important;
+  animation: fadeInUp 0.6s ease forwards !important;
+  display: block !important;
+  visibility: visible !important;
 }
 
 @keyframes fadeInUp {
   0% {
-    opacity: 0;
-    transform: translateY(10px);
+    opacity: 0 !important;
+    transform: translateY(10px) !important;
   }
   100% {
-    opacity: 1;
-    transform: translateY(0);
+    opacity: 1 !important;
+    transform: translateY(0) !important;
   }
 }
 
-/* QR code highlight pulse animation */
+/* QR code highlight pulse animation - visible on all devices */
 .qr-code-pulse {
-  animation: qrPulse 2s infinite;
+  animation: qrPulse 2s infinite !important;
+  display: block !important;
+  visibility: visible !important;
 }
 
 @keyframes qrPulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4) !important;
   }
   70% {
-    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0) !important;
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0) !important;
   }
 }
 
 img[alt="UPI QR Code"] {
-  max-width: 100%;
-  height: auto;
-  border-radius: 0.5rem;
-  display: block;
-  border: 1px solid #e5e7eb;
-  padding: 0.5rem;
-  background-color: white;
-  transition: all 0.3s ease;
+  max-width: 100% !important;
+  height: auto !important;
+  border-radius: 0.5rem !important;
+  display: block !important;
+  border: 1px solid #e5e7eb !important;
+  padding: 0.5rem !important;
+  background-color: white !important;
+  transition: all 0.3s ease !important;
+  visibility: visible !important;
 }
 
-/* QR code scan indicator */
+/* QR code scan indicator - visible on all devices */
 .scan-indicator {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 4px;
-  background: linear-gradient(to right, transparent, #3b82f6, transparent);
-  animation: scanLine 2s infinite linear;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 4px !important;
+  background: linear-gradient(to right, transparent, #3b82f6, transparent) !important;
+  animation: scanLine 2s infinite linear !important;
+  z-index: 5 !important; /* Ensure visibility */
+  display: block !important;
+  visibility: visible !important;
 }
 
 @keyframes scanLine {
   0% {
-    transform: translateY(0);
+    transform: translateY(0) !important;
   }
   50% {
-    transform: translateY(250px);
+    transform: translateY(250px) !important;
   }
   100% {
-    transform: translateY(0);
+    transform: translateY(0) !important;
   }
 }
 
@@ -417,13 +458,61 @@ body.modal-open {
   }
 }
 
-/* Show/hide with CSS instead of JavaScript */
+/* Improved full page scrolling for all devices */
+.page-scroll {
+  overflow-y: scroll !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-y: contain !important; /* Prevents page refresh on pull */
+  scroll-behavior: smooth !important;
+  height: 100% !important;
+  width: 100% !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+}
+
+/* Disable pull-to-refresh on mobile */
+html, body {
+  overscroll-behavior-y: none !important;
+  touch-action: pan-y !important;
+}
+
+/* Fix scroll jumping on iOS/Safari */
+body {
+  -webkit-overflow-scrolling: touch !important;
+  position: fixed !important; /* This prevents body from scrolling behind modals */
+  width: 100% !important;
+  overflow-y: scroll !important; /* Use scroll instead of auto to prevent jumps */
+}
+
+/* Enable body scrolling when no modal is present */
+body:not(.modal-open) {
+  position: relative !important; /* Override fixed position when no modal */
+}
+
+/* Show/hide with CSS visibility classes that work on all devices */
 [data-visibility="hidden"] {
   display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  transform: translateX(-9999px) !important;
+  position: absolute !important;
 }
 
 [data-visibility="visible"] {
   display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  max-height: none !important;
+  overflow: visible !important;
+  pointer-events: auto !important;
+  transform: translateX(0) !important;
+  position: static !important;
 }
 
 /* Fade-in animation for page elements */
@@ -440,17 +529,111 @@ body.modal-open {
   }
 }
 
-/* Fix viewport height issues on mobile */
-.vh-fix {
-  height: 100vh;
-  height: calc(var(--vh, 1vh) * 100);
+/* Cross-browser and cross-device compatibility fixes */
+@supports (-webkit-touch-callout: none) {
+  /* iOS-specific fixes */
+  body, html {
+    height: -webkit-fill-available !important;
+  }
+  
+  .min-h-screen {
+    min-height: -webkit-fill-available !important;
+  }
+  
+  /* Fix for iOS 100vh issue */
+  .min-h-screen, .h-screen {
+    height: 100vh !important; /* Fallback */
+    height: -webkit-fill-available !important;
+  }
+  
+  /* Fix for iOS momentum scrolling */
+  .overflow-auto, .overflow-y-auto {
+    -webkit-overflow-scrolling: touch !important;
+  }
 }
 
-/* JavaScript helper for vh fix:
-window.addEventListener('resize', () => {
-  let vh = window.innerHeight * 0.01;
-  document.documentElement.style.setProperty('--vh', `${vh}px`);
-});
+/* Force element visibility across all browsers and devices */
+.force-visible {
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: block !important;
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  overflow: visible !important;
+  clip: auto !important;
+  clip-path: none !important;
+  pointer-events: auto !important;
+  z-index: auto !important;
+  transform: none !important;
+}
+
+/* Force element hiding across all browsers and devices */
+.force-hidden {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  display: none !important;
+  position: absolute !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  clip-path: inset(50%) !important;
+  pointer-events: none !important;
+  z-index: -1 !important;
+  transform: translateX(-9999px) !important;
+}
+
+/* Styles for full-screen scrolling containers */
+.full-scroll-container {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow-y: scroll !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
+  z-index: 1 !important;
+}
+
+/* Content container with proper visibility */
+.content-visible {
+  min-height: 100% !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: block !important;
+}
+
+/* JavaScript helper functions to add to your JS file:
+function showElement(element) {
+  if (typeof element === 'string') {
+    element = document.querySelector(element);
+  }
+  if (!element) return;
+  
+  element.classList.remove('force-hidden', 'hidden');
+  element.classList.add('force-visible', 'visible');
+  element.style.display = 'block';
+  element.style.visibility = 'visible';
+  element.style.opacity = '1';
+}
+
+function hideElement(element) {
+  if (typeof element === 'string') {
+    element = document.querySelector(element);
+  }
+  if (!element) return;
+  
+  element.classList.remove('force-visible', 'visible');
+  element.classList.add('force-hidden', 'hidden');
+  element.style.display = 'none';
+  element.style.visibility = 'hidden';
+  element.style.opacity = '0';
+}
 */
 
 /* Form elements improvements */
