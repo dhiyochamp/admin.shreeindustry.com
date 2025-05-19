@@ -1,35 +1,48 @@
-/* admin-panel.css */
+/* admin-panel.css - Improved Version */
 
 /* Base styles for better overall appearance */
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
+  margin: 0;
+  padding: 0;
 }
 
 html, body {
+  height: 100%;
+  width: 100%;
   margin: 0;
   padding: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   scroll-behavior: smooth;
-  height: 100%;
-  width: 100%;
   overflow-x: hidden;
+  position: relative;
 }
 
-/* Main container styles */
+/* Proper window sizing - ensures content takes full viewport */
 .min-h-screen {
-  min-height: 100vh; /* Ensure full height */
-  width: 100%;
+  min-height: 100vh;
+  width: 100vw;
+  max-width: 100%; /* Prevents horizontal overflow */
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
   padding-bottom: env(safe-area-inset-bottom); /* iOS safe area */
+  position: relative;
 }
 
+/* Fixed position background gradient */
 .bg-gradient-to-b {
-  background-attachment: fixed; /* Prevents gradient jumping */
+  background-attachment: fixed;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
 }
 
+/* Container with proper visibility */
 .container {
   width: 100%;
   max-width: 100%;
@@ -37,10 +50,27 @@ html, body {
   padding-right: 1rem;
   margin-left: auto;
   margin-right: auto;
-  overflow-x: hidden;
+  position: relative;
+  z-index: 1; /* Ensures visibility above background */
+  visibility: visible !important; /* Force visibility */
 }
 
-/* Responsive container widths */
+/* Show/Hide content with animation */
+.hidden {
+  display: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.visible {
+  display: block;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.3s ease, visibility 0s;
+}
+
+/* Responsive container widths with better visibility control */
 @media (min-width: 640px) {
   .container {
     max-width: 640px;
@@ -62,7 +92,7 @@ html, body {
   }
 }
 
-/* Main card styles */
+/* Main card styles with proper visibility */
 .max-w-6xl {
   max-width: 100%;
   margin-left: auto;
@@ -70,6 +100,9 @@ html, body {
   border-radius: 1rem;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   overflow: hidden;
+  position: relative;
+  z-index: 2; /* Ensures visibility */
+  background-color: #fff; /* Ensures content is visible against background */
 }
 
 @media (min-width: 768px) {
@@ -90,12 +123,13 @@ html, body {
   }
 }
 
-/* Improved scrollable areas */
+/* Improved mobile scrolling */
 .overflow-auto {
   overflow: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+  max-height: 80vh; /* Prevent excessive scrolling containers */
 }
 
 .overflow-auto::-webkit-scrollbar {
@@ -112,10 +146,179 @@ html, body {
   border-radius: 10px;
 }
 
-/* Plan cards styling */
+/* Fixed position elements - ensure proper visibility */
+.fixed {
+  position: fixed;
+  z-index: 50; /* Higher z-index for overlay elements */
+}
+
+/* Improved QR code styling and animation */
+.qr-code-container {
+  position: relative;
+  width: 100%;
+  max-width: 250px;
+  margin: 0 auto;
+  overflow: hidden;
+  transition: transform 0.3s ease;
+}
+
+.qr-code-container:hover {
+  transform: scale(1.05);
+}
+
+/* QR Code fade-in animation */
+.qr-code-animation {
+  opacity: 0;
+  transform: translateY(10px);
+  animation: fadeInUp 0.6s ease forwards;
+}
+
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* QR code highlight pulse animation */
+.qr-code-pulse {
+  animation: qrPulse 2s infinite;
+}
+
+@keyframes qrPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+img[alt="UPI QR Code"] {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  display: block;
+  border: 1px solid #e5e7eb;
+  padding: 0.5rem;
+  background-color: white;
+  transition: all 0.3s ease;
+}
+
+/* QR code scan indicator */
+.scan-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(to right, transparent, #3b82f6, transparent);
+  animation: scanLine 2s infinite linear;
+}
+
+@keyframes scanLine {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(250px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+/* Modal overlay for proper visibility */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.modal-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Modal content */
+.modal-content {
+  background-color: white;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  transform: translateY(20px);
+  transition: transform 0.3s ease;
+}
+
+.modal-overlay.visible .modal-content {
+  transform: translateY(0);
+}
+
+/* Fix mobile scrolling issues */
+body.modal-open {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}
+
+/* Loading animation for QR code */
+.qr-loading {
+  position: relative;
+  width: 100%;
+  height: 250px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f9fafb;
+  border-radius: 0.5rem;
+}
+
+.qr-loading::after {
+  content: '';
+  width: 60%;
+  height: 60%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Plan cards styling with improved visibility */
 .grid {
   display: grid;
   gap: 1rem;
+  position: relative;
+  z-index: 2;
 }
 
 .grid-cols-1 {
@@ -132,16 +335,19 @@ html, body {
   }
 }
 
-/* Plan card enhancements */
+/* Plan card enhancements with visibility */
 [class*="border-2"] {
   position: relative;
   transition: all 0.3s ease;
   border-width: 2px;
+  z-index: 1;
+  background-color: white; /* Ensures visibility */
 }
 
 [class*="border-2"]:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  z-index: 2; /* Brings forward on hover */
 }
 
 .border-blue-500 {
@@ -165,93 +371,7 @@ html, body {
   border-radius: 0.75rem;
 }
 
-/* Form elements improvements */
-input[type="text"],
-input[type="email"],
-input[type="password"] {
-  width: 100%;
-  padding: 0.75rem 0.5rem;
-  font-size: 1rem;
-  line-height: 1.5;
-  border: 1px solid #d1d5db;
-  border-radius: 0.5rem;
-  appearance: none;
-  outline: none;
-  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-}
-
-input[type="text"]:focus,
-input[type="email"]:focus,
-input[type="password"]:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
-}
-
-/* Button styles improvement */
-button {
-  cursor: pointer;
-  border: none;
-  padding: 0.75rem 1rem;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-button:focus {
-  outline: none;
-}
-
-button:active {
-  transform: translateY(1px);
-}
-
-/* Disable button styling */
-button:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-/* Payment app styling */
-[style*="border-left"] {
-  transition: all 0.3s ease;
-}
-
-[style*="border-left"]:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-/* QR code styling */
-img[alt="UPI QR Code"] {
-  max-width: 100%;
-  height: auto;
-  border-radius: 0.5rem;
-  display: block;
-}
-
-/* Custom amount input styling */
-.relative {
-  position: relative;
-}
-
-.pl-8 {
-  padding-left: 2rem;
-}
-
-/* Error messages styling */
-.text-red-500 {
-  color: #ef4444;
-  font-size: 0.875rem;
-  margin-top: 0.25rem;
-}
-
-/* Success state styling */
-.text-green-500 {
-  color: #10b981;
-}
-
-/* Media query for better mobile experience */
+/* Mobile viewport improvements */
 @media (max-width: 640px) {
   .p-6, .p-4 {
     padding: 1rem;
@@ -276,6 +396,11 @@ img[alt="UPI QR Code"] {
       padding-left: max(1rem, env(safe-area-inset-left));
       padding-right: max(1rem, env(safe-area-inset-right));
     }
+    
+    /* Fix for bottom bar on iOS */
+    .min-h-screen {
+      padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    }
   }
   
   /* Improved touch targets for mobile */
@@ -285,6 +410,130 @@ img[alt="UPI QR Code"] {
   input[type="password"] {
     min-height: 48px; /* Recommended minimum touch target size */
   }
+  
+  /* Fix iOS focus zoom issue */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Show/hide with CSS instead of JavaScript */
+[data-visibility="hidden"] {
+  display: none !important;
+}
+
+[data-visibility="visible"] {
+  display: block !important;
+}
+
+/* Fade-in animation for page elements */
+.fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Fix viewport height issues on mobile */
+.vh-fix {
+  height: 100vh;
+  height: calc(var(--vh, 1vh) * 100);
+}
+
+/* JavaScript helper for vh fix:
+window.addEventListener('resize', () => {
+  let vh = window.innerHeight * 0.01;
+  document.documentElement.style.setProperty('--vh', `${vh}px`);
+});
+*/
+
+/* Form elements improvements */
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+  width: 100%;
+  padding: 0.75rem 0.5rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  appearance: none;
+  outline: none;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  background-color: white; /* Ensures visibility */
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
+/* Button styles improvement */
+button {
+  cursor: pointer;
+  border: none;
+  padding: 0.75rem 1rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  background-color: #3b82f6;
+  color: white;
+  border-radius: 0.5rem;
+}
+
+button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+/* Disable button styling */
+button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Payment app styling */
+[style*="border-left"] {
+  transition: all 0.3s ease;
+}
+
+[style*="border-left"]:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Custom amount input styling */
+.relative {
+  position: relative;
+}
+
+.pl-8 {
+  padding-left: 2rem;
+}
+
+/* Error messages styling */
+.text-red-500 {
+  color: #ef4444;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+/* Success state styling */
+.text-green-500 {
+  color: #10b981;
 }
 
 /* Improved spacing for small screens */
@@ -348,10 +597,19 @@ img[alt="UPI QR Code"] {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* Improved "best value" badge */
-.bg-orange-500 {
+/* Improved "best value" badge with better visibility */
+.best-value-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
   background-color: #f97316;
-  z-index: 1;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: bold;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  z-index: 3; /* Ensures visibility */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Styles for the custom payment section */
@@ -361,27 +619,70 @@ input[name="customAmount"] {
   text-align: left;
 }
 
-/* Fix for iOS input zoom */
-@media screen and (max-width: 767px) {
-  input[type="text"],
-  input[type="email"],
-  input[type="password"] {
-    font-size: 16px !important;
-  }
-}
-
-/* UPI ID styling */
-code {
+/* UPI ID styling with copy animation */
+.upi-code {
   background-color: #f9fafb;
-  padding: 0.25rem 0.5rem;
+  padding: 0.5rem 0.75rem;
   border-radius: 0.25rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 0.875rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
 }
+
+.upi-code:hover {
+  background-color: #f3f4f6;
+}
+
+.upi-code:active {
+  background-color: #e5e7eb;
+}
+
+.upi-code.copied::after {
+  content: 'Copied!';
+  position: absolute;
+  right: 0.5rem;
+  font-size: 0.75rem;
+  color: #10b981;
+  animation: fadeOut 1.5s forwards;
+}
+
+@keyframes fadeOut {
+  0% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Prevents FOUC (Flash of Unstyled Content) */
+.no-fouc {
+  visibility: hidden;
+}
+
+.fouc-ready {
+  visibility: visible;
+  animation: fadeIn 0.3s ease;
+}
+
+/* JavaScript can be used to add this class when the page is ready:
+document.addEventListener('DOMContentLoaded', function() {
+  document.documentElement.classList.add('fouc-ready');
+  document.documentElement.classList.remove('no-fouc');
+});
+*/
 
 /* Fix for very small screens */
 @media (max-width: 320px) {
