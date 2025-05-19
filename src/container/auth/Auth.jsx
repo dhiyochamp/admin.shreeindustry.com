@@ -293,30 +293,29 @@ export default function AdminPanel() {
     try {
       setPaymentVerifying(true);
       
-      // Here you would typically send the payment data to your backend
-      // For this demo, we'll simulate a backend verification
+      // Create a unique order ID
+      const orderId = uuidv4();
+      
+      // Get the current payment amount
+      const paymentAmount = isCustomPayment ? parseInt(customAmount) : plans[selectedPlan].amount;
+      
+      // In a real application, you would verify the payment with your payment provider here
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Mock payment data - in production this would come from your backend
-      const paymentData = {
-        id: uuidv4(),
-        customerId: customerId,
-        amount: isCustomPayment ? parseInt(customAmount) : plans[selectedPlan].amount,
-        transactionId: transactionId,
-        status: "pending",
-        planType: selectedPlan,
-        createdAt: new Date().toISOString()
-      };
-      
-      // Save payment data to Supabase
+      // Save payment data to Supabase with the updated schema
       const { error } = await supabase
         .from('payments')
         .insert([{
-          amount: paymentData.amount,
-          paymentStatus: 'pending',
-          orderId: paymentData.id,
-          customer: customerId,
-          transaction_id: paymentData.transactionId
+          amount: paymentAmount,
+          payment_status: 'pending',
+          order_id: orderId,
+          customer_id: customerId,
+          transaction_id: transactionId,
+          plan_type: selectedPlan,
+          customer_name: customerName,
+          customer_email: customerEmail,
+          customer_phone: customerPhone,
+          created_at: new Date().toISOString()
         }]);
         
       if (error) throw error;
