@@ -304,7 +304,7 @@ export default function AdminPanel() {
       
       // Save payment data to Supabase with the updated schema
       const { error } = await supabase
-        .from('payments')
+        .from('payment')
         .insert([{
           amount: paymentAmount,
           payment_status: 'pending',
