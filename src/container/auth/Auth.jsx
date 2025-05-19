@@ -78,7 +78,7 @@ export default function AdminPanel() {
   // UPI payment details
   const upiId = 'techvisiona@axl'; 
   const name = 'Shree Industry';
-  const MIN_AMOUNT = 3000; // Minimum payment amount
+  const MIN_AMOUNT = 1; // Minimum payment amount
   
   // Payment apps configuration with text-only display
   const paymentApps = [
