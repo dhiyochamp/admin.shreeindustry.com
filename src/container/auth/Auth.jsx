@@ -12,7 +12,11 @@ import {
   FaCrown, 
   FaRupeeSign,
   FaReceipt,
-  FaUserAlt
+  FaUserAlt,
+  FaPhone,
+  FaShieldAlt,
+  FaCreditCard,
+  FaCheckCircle
 } from "react-icons/fa";
 import { useDispatch } from "react-redux";
 import { signInWithEmail } from "@/redux/authSlice";
@@ -21,19 +25,26 @@ import { createClient } from "@supabase/supabase-js";
 import { generateUpiQr } from '@/utils/generateUpiQr';
 import { v4 as uuidv4 } from 'uuid';
 
-export default function Login() {
+// Custom CSS for enhanced UI across all devices
+import './admin-panel.css';
+
+export default function AdminPanel() {
   const router = useRouter();
   const dispatch = useDispatch();
   
+  // Create the Supabase client
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || '',
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
   );
   
-  // State management
-  const [currentStep, setCurrentStep] = useState(1);
+  // Main application state
+  const [currentStep, setCurrentStep] = useState(1); // 1: Plan Selection, 2: Payment, 3: Verification, 4: Credentials, 5: Login
   const [isLoading, setIsLoading] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState('6month');
+  const [errors, setErrors] = useState({});
+  
+  // Payment related state
   const [qr, setQr] = useState('');
   const [amount, setAmount] = useState(18000);
   const [customAmount, setCustomAmount] = useState('');
@@ -47,26 +58,29 @@ export default function Login() {
   const [transactionError, setTransactionError] = useState('');
   const [copiedUpi, setCopiedUpi] = useState(false);
   const [copiedCustomerId, setCopiedCustomerId] = useState(false);
-  const [loginData, setLoginData] = useState({
-    email: '',
-    password: ''
-  });
-  const [errors, setErrors] = useState({
-    general: '',
-    email: '',
-    password: ''
-  });
+  
+  // Customer information state
+  const [customerName, setCustomerName] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerNameError, setCustomerNameError] = useState('');
+  const [customerEmailError, setCustomerEmailError] = useState('');
+  const [customerPhoneError, setCustomerPhoneError] = useState('');
+  
+  // Credentials state
+  const [credentialsGenerated, setCredentialsGenerated] = useState(false);
   const [generatedCredentials, setGeneratedCredentials] = useState({
     email: '',
     password: '',
     expiryDate: ''
   });
-
-  // Configuration
-  const upiId = 'techvisiona@axl';
-  const name = 'sharptech';
-  const MIN_AMOUNT = 3000;
   
+  // UPI payment details
+  const upiId = 'techvisiona@axl'; 
+  const name = 'Shree Industry';
+  const MIN_AMOUNT = 3000; // Minimum payment amount
+  
+  // Payment apps configuration with text-only display
   const paymentApps = [
     { name: 'PhonePe', color: '#5f259f' },
     { name: 'Google Pay', color: '#2da94f' },
@@ -74,47 +88,63 @@ export default function Login() {
     { name: 'BHIM', color: '#00a5ff' },
     { name: 'Amazon Pay', color: '#ff9900' },
   ];
-
+  
+  // Subscription plans
   const plans = {
     '1month': { 
       amount: 5000, 
-      label: '1 Month - ₹5,000', 
+      label: '1 Month', 
+      price: '₹5,000',
       durationDays: 30, 
       popular: false,
       features: ['Full admin access', 'Technical support', 'Regular updates']
     },
     '6month': { 
       amount: 18000, 
-      label: '6 Months - ₹3,000/month (₹18,000)', 
+      label: '6 Months', 
+      price: '₹3,000/month (₹18,000 total)',
       durationDays: 180, 
       popular: true,
       features: ['Full admin access', 'Priority support', 'Regular updates', '20% savings vs monthly']  
     },
     '12month': { 
       amount: 24000, 
-      label: '12 Months - ₹2,000/month (₹24,000)', 
+      label: '12 Months', 
+      price: '₹2,000/month (₹24,000 total)',
       durationDays: 365, 
       popular: false,
       features: ['Full admin access', 'Priority support', 'Regular updates', 'Free consulting session', '60% savings vs monthly']
     },
     'custom': {
       label: 'Custom Payment',
+      price: 'Set your own amount',
       popular: false,
-      features: ['Pay minimum ₹3,000', 'Set your own amount', 'Full admin access']
+      features: ['Pay minimum ₹3,000', 'Full admin access', 'Support via email']
     }
   };
 
-  // Initialize customer ID
+  // Login form state
+  const [loginData, setLoginData] = useState({
+    email: "",
+    password: "",
+    remember: false
+  });
+
+  // Generate customer ID when component mounts
   useEffect(() => {
-    setCustomerId(uuidv4());
+    const newCustomerId = uuidv4().substring(0, 8).toUpperCase();
+    setCustomerId(newCustomerId);
   }, []);
 
-  // QR Code Generation
+  // Generate QR code
   useEffect(() => {
     const generateQrCode = async () => {
       try {
-        const paymentAmount = isCustomPayment ? parseInt(customAmount) : plans[selectedPlan].amount;
-        if (isNaN(paymentAmount)) return;
+        let paymentAmount = isCustomPayment ? parseInt(customAmount) : plans[selectedPlan].amount;
+        
+        if (isNaN(paymentAmount) || paymentAmount < MIN_AMOUNT) {
+          return; // Don't generate QR if amount is invalid
+        }
 
         const qrCode = await generateUpiQr({
           upiId,
@@ -122,6 +152,7 @@ export default function Login() {
           amount: paymentAmount,
           desc: `CID:${customerId}`
         });
+        
         setQr(qrCode);
         setAmount(paymentAmount);
       } catch (error) {
@@ -130,980 +161,972 @@ export default function Login() {
       }
     };
 
-    if (currentStep === 2 && !paymentCompleted) generateQrCode();
+    if (currentStep === 2 && !paymentCompleted) {
+      generateQrCode();
+    }
   }, [selectedPlan, customAmount, isCustomPayment, currentStep, paymentCompleted, customerId]);
 
-  // Copy UPI ID to clipboard
-  const copyUpiId = () => {
-    navigator.clipboard.writeText(upiId);
-    setCopiedUpi(true);
-    setTimeout(() => setCopiedUpi(false), 2000);
-  };
+  // Update payment mode and amount when plan changes
+  useEffect(() => {
+    if (selectedPlan === 'custom') {
+      setIsCustomPayment(true);
+      setCustomAmount(MIN_AMOUNT.toString());
+    } else {
+      setIsCustomPayment(false);
+      if (plans[selectedPlan]) {
+        setAmount(plans[selectedPlan].amount);
+      }
+    }
+  }, [selectedPlan]);
 
-  // Copy Customer ID to clipboard
-  const copyCustomerId = () => {
-    navigator.clipboard.writeText(customerId);
-    setCopiedCustomerId(true);
-    setTimeout(() => setCopiedCustomerId(false), 2000);
-  };
-
-  // Handle custom amount change
+  // Handle custom amount changes
   const handleCustomAmountChange = (e) => {
-    const value = e.target.value;
+    const value = e.target.value.replace(/[^0-9]/g, ''); // Allow only numbers
     setCustomAmount(value);
     
+    // Validate minimum amount
     if (value && parseInt(value) < MIN_AMOUNT) {
-      setAmountError(`Minimum amount is ₹${MIN_AMOUNT}`);
+      setAmountError(`Minimum payment amount is ₹${MIN_AMOUNT.toLocaleString()}`);
     } else {
       setAmountError('');
     }
   };
 
-  // Proceed to payment step
-  const handleProceedToPayment = () => {
-    if (selectedPlan === 'custom' && (!customAmount || parseInt(customAmount) < MIN_AMOUNT)) {
-      setAmountError(`Minimum amount is ₹${MIN_AMOUNT}`);
-      return;
-    }
-    
-    setCurrentStep(2);
+  // Login form handlers
+  const handleLoginChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setLoginData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+    setErrors(prev => ({ ...prev, [name]: "" }));
   };
 
-  // Payment verification handler
+  const validateLoginForm = () => {
+    const newErrors = {};
+    if (!loginData.email) newErrors.email = "Email is required";
+    else if (!/\S+@\S+\.\S+/.test(loginData.email)) newErrors.email = "Invalid email format";
+    if (!loginData.password) newErrors.password = "Password is required";
+    else if (loginData.password.length < 6) newErrors.password = "Minimum 6 characters required";
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleLoginSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateLoginForm()) return;
+
+    try {
+      setIsLoading(true);
+      const { error } = await supabase.auth.signInWithPassword({
+        email: loginData.email,
+        password: loginData.password,
+      });
+      
+      if (error) throw error;
+      await dispatch(signInWithEmail(loginData)).unwrap();
+      router.push("/home");
+      
+    } catch (error) {
+      setErrors({ general: error.message || "Login failed. Please check your credentials." });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // User details validation
+  const validateUserDetails = () => {
+    let isValid = true;
+    
+    if (!customerName.trim()) {
+      setCustomerNameError("Name is required");
+      isValid = false;
+    } else {
+      setCustomerNameError("");
+    }
+    
+    if (!customerEmail.trim()) {
+      setCustomerEmailError("Email is required");
+      isValid = false;
+    } else if (!/\S+@\S+\.\S+/.test(customerEmail)) {
+      setCustomerEmailError("Invalid email format");
+      isValid = false;
+    } else {
+      setCustomerEmailError("");
+    }
+    
+    if (!customerPhone.trim()) {
+      setCustomerPhoneError("Phone number is required");
+      isValid = false;
+    } else if (!/^\d{10}$/.test(customerPhone.replace(/[^0-9]/g, ''))) {
+      setCustomerPhoneError("Enter a valid 10-digit phone number");
+      isValid = false;
+    } else {
+      setCustomerPhoneError("");
+    }
+    
+    return isValid;
+  };
+
+  // Handle proceeding to payment after plan selection
+  const handleProceedToPayment = () => {
+    if (validateUserDetails()) {
+      setCurrentStep(2);
+      window.scrollTo(0, 0);
+    }
+  };
+
+  // Payment verification handlers
+  const handleTransactionIdChange = (e) => {
+    setTransactionId(e.target.value);
+    setTransactionError('');
+  };
+
   const handlePaymentVerification = async () => {
+    // Validate transaction ID
     if (!transactionId.trim()) {
-      setTransactionError("Please enter transaction ID");
+      setTransactionError("Please enter the transaction ID from your payment");
       return;
     }
     
     try {
       setPaymentVerifying(true);
-      const paymentAmount = isCustomPayment ? parseInt(customAmount) : plans[selectedPlan].amount;
-
-      // Save payment to database
-      const { data, error } = await supabase
-        .from('payment')
+      
+      // Here you would typically send the payment data to your backend
+      // For this demo, we'll simulate a backend verification
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Mock payment data - in production this would come from your backend
+      const paymentData = {
+        id: uuidv4(),
+        customerId: customerId,
+        amount: isCustomPayment ? parseInt(customAmount) : plans[selectedPlan].amount,
+        transactionId: transactionId,
+        status: "pending",
+        planType: selectedPlan,
+        createdAt: new Date().toISOString()
+      };
+      
+      // Save payment data to Supabase
+      const { error } = await supabase
+        .from('payments')
         .insert([{
-          id: uuidv4(),
-          created_at: new Date().toISOString(),
-          amount: paymentAmount,
-          status: 'completed',
-          customer_id: customerId,
-          transaction_id: transactionId,
-          plan: selectedPlan,
-          expiry_date: calculateExpiryDate()
-        }])
-        .select();
-
+          amount: paymentData.amount,
+          paymentStatus: 'pending',
+          orderId: paymentData.id,
+          customer: customerId,
+          transaction_id: paymentData.transactionId
+        }]);
+        
       if (error) throw error;
-
+      
       setPaymentCompleted(true);
       setCurrentStep(3);
+      window.scrollTo(0, 0);
     } catch (error) {
-      console.error('Payment error:', error);
-      setTransactionError("Payment verification failed. Please try again.");
+      console.error("Payment verification error:", error);
+      setTransactionError("Payment verification failed. Please try again or contact support.");
     } finally {
       setPaymentVerifying(false);
     }
   };
 
-  // Calculate expiry date based on selected plan
-  const calculateExpiryDate = () => {
-    const expiryDate = new Date();
-    
-    switch(selectedPlan) {
-      case '1month': expiryDate.setDate(expiryDate.getDate() + 30); break;
-      case '6month': expiryDate.setDate(expiryDate.getDate() + 180); break;
-      case '12month': expiryDate.setDate(expiryDate.getDate() + 365); break;
-      default: expiryDate.setDate(expiryDate.getDate() + 30);
-    }
-    
-    return expiryDate.toISOString();
-  };
-
-  // Generate admin credentials
+  // Generate login credentials 
   const generateCredentials = async () => {
     try {
       setIsLoading(true);
-      const expiryDate = calculateExpiryDate();
-      const password = `SP${customerId}${Math.floor(Math.random() * 1000)}`;
       
-      // Save credentials to database
-      const { error } = await supabase
-        .from('admin_users')
-        .insert([{
-          id: uuidv4(),
-          email: `admin_${customerId}@shreeindustry.com`,
-          password: password,
-          customer_id: customerId,
-          expiry_date: expiryDate,
-          status: 'active',
-          created_at: new Date().toISOString()
-        }]);
-
-      if (error) throw error;
-
-      setGeneratedCredentials({
-        email: `admin_${customerId}@shreeindustry.com`,
-        password: password,
-        expiryDate: new Date(expiryDate).toLocaleDateString()
-      });
+      // In a real application, this would be handled securely by your backend
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Generate expiry date based on selected plan
+      const now = new Date();
+      const expiryDate = new Date(now);
+      
+      if (selectedPlan === '1month') {
+        expiryDate.setDate(expiryDate.getDate() + 30);
+      } else if (selectedPlan === '6month') {
+        expiryDate.setDate(expiryDate.getDate() + 180);
+      } else if (selectedPlan === '12month') {
+        expiryDate.setDate(expiryDate.getDate() + 365);
+      } else {
+        // For custom plans, default to 30 days
+        expiryDate.setDate(expiryDate.getDate() + 30);
+      }
+      
+      // Generate credentials
+      const credentials = {
+        email: customerEmail,
+        password: `SI${customerId}${Math.floor(Math.random() * 1000)}`,
+        expiryDate: expiryDate.toLocaleDateString()
+      };
+      
+      setGeneratedCredentials(credentials);
+      setCredentialsGenerated(true);
       setCurrentStep(4);
+      window.scrollTo(0, 0);
     } catch (error) {
-      console.error('Credentials generation error:', error);
-      setErrors({ general: "Credentials generation failed" });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle login submission
-  const handleLoginSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setErrors({ email: '', password: '', general: '' });
-
-    try {
-      const { data, error } = await supabase
-        .from('admin_users')
-        .select('*')
-        .eq('email', loginData.email)
-        .eq('password', loginData.password)
-        .single();
-
-      if (error || !data) {
-        throw new Error('Invalid credentials');
-      }
-
-      // Check if account is expired
-      const expiryDate = new Date(data.expiry_date);
-      if (new Date() > expiryDate) {
-        throw new Error('Your account has expired. Please renew your subscription.');
-      }
-
-      // Dispatch login action (assuming you have Redux setup)
-      dispatch(signInWithEmail({
-        email: data.email,
-        token: uuidv4() // In a real app, you'd get this from your auth system
+      setErrors(prev => ({ 
+        ...prev, 
+        general: "Failed to generate credentials. Please contact support." 
       }));
-
-      router.push('/admin/dashboard');
-    } catch (error) {
-      console.error('Login error:', error);
-      setErrors({
-        general: error.message || 'Login failed. Please check your credentials.'
-      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // UI Components
+  const copyUpiId = () => {
+    navigator.clipboard.writeText(upiId);
+    setCopiedUpi(true);
+    setTimeout(() => setCopiedUpi(false), 3000);
+  };
+
+  const copyCustomerId = () => {
+    navigator.clipboard.writeText(customerId);
+    setCopiedCustomerId(true);
+    setTimeout(() => setCopiedCustomerId(false), 3000);
+  };
+
+  // Copy generated password
+  const copyPassword = () => {
+    navigator.clipboard.writeText(generatedCredentials.password);
+    setTimeout(() => {
+      // Show a temporary toast or notification for copied password
+    }, 3000);
+  };
+
+  // Responsive plan cards with enhanced design
   const renderPlanCards = () => (
     Object.entries(plans).map(([key, plan]) => (
-      <div key={key} className={`plan-card ${selectedPlan === key ? 'selected' : ''}`}
-        onClick={() => {
-          setSelectedPlan(key);
-          if (key === 'custom') {
-            setIsCustomPayment(true);
-          } else {
-            setIsCustomPayment(false);
-          }
-        }}>
-        {plan.popular && <div className="popular-badge">BEST VALUE</div>}
-        <h3>{plan.label.split(' - ')[0]}</h3>
-        {key !== 'custom' && <div className="price">₹{plan.amount.toLocaleString()}</div>}
-        <ul>{plan.features.map((f, i) => <li key={i}><FaCheck/>{f}</li>)}</ul>
+      <div 
+        key={key}
+        className={`relative p-5 border-2 rounded-xl cursor-pointer transition-all hover:shadow-md
+          ${selectedPlan === key ? 'border-blue-500 bg-blue-50 shadow-md' : 'border-gray-200 hover:border-blue-300'}
+          ${key === 'custom' ? 'col-span-1 md:col-span-3 lg:col-span-1' : ''}`}
+        onClick={() => setSelectedPlan(key)}
+      >
+        {plan.popular && (
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">
+            BEST VALUE
+          </div>
+        )}
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-gray-800 text-lg">
+            {plan.label}
+          </h3>
+          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all
+            ${selectedPlan === key ? 'border-blue-500 bg-blue-500 scale-110' : 'border-gray-300'}`}>
+            {selectedPlan === key && <FaCheck className="text-white text-xs" />}
+          </div>
+        </div>
+        
+        <div className="text-lg font-bold text-blue-600 mb-3">
+          {plan.price}
+        </div>
+        
+        <ul className="mt-3 space-y-2">
+          {plan.features.map((feature, index) => (
+            <li key={index} className="text-sm flex items-center text-gray-600">
+              <div className="bg-blue-100 p-1 rounded-full mr-2">
+                <FaCheck className="text-blue-600 text-xs" />
+              </div>
+              <span>{feature}</span>
+            </li>
+          ))}
+        </ul>
       </div>
     ))
   );
 
-  const renderPaymentStep = () => (
-    <div className="payment-step">
-      <div className="customer-id">
-        <span>Customer ID: {customerId}</span>
-        <button onClick={copyCustomerId}>
-          {copiedCustomerId ? <FaCheck/> : <FaCopy/>}
-        </button>
-      </div>
-      
-      <div className="qr-section">
-        {qr ? (
-          <>
-            <img src={qr} alt="UPI QR Code" />
-            <div className="upi-details">
-              <div className="upi-id">
-                <span>{upiId}</span>
-                <button onClick={copyUpiId}>
-                  {copiedUpi ? <FaCheck/> : <FaCopy/>}
-                </button>
-              </div>
-              <div className="payment-apps">
-                {paymentApps.map((app, i) => (
-                  <div key={i} className="payment-app" style={{ borderColor: app.color }}>
-                    {app.name}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>
-        ) : <div className="loading-qr">Generating QR...</div>}
-      </div>
-      
-      <div className="amount-display">
-        <FaRupeeSign/>
-        <span>{amount.toLocaleString()}</span>
-      </div>
-      
-      {isCustomPayment && (
-        <div className="custom-amount">
-          <input
-            type="number"
-            value={customAmount}
-            onChange={handleCustomAmountChange}
-            placeholder="Enter custom amount"
-            min={MIN_AMOUNT}
-          />
-          {amountError && <div className="error">{amountError}</div>}
-        </div>
-      )}
-      
-      <div className="verification-section">
-        <input 
-          type="text" 
-          value={transactionId}
-          onChange={(e) => {
-            setTransactionId(e.target.value);
-            setTransactionError('');
-          }}
-          placeholder="Enter Transaction ID"
-        />
-        <button 
-          onClick={handlePaymentVerification}
-          disabled={!transactionId.trim() || paymentVerifying}
-        >
-          {paymentVerifying ? 'Verifying...' : 'Verify Payment'}
-        </button>
-        {transactionError && <div className="error">{transactionError}</div>}
-      </div>
+  // Common card component for consistent styling
+  const Card = ({ children, className = "" }) => (
+    <div className={`bg-white border border-gray-100 rounded-2xl shadow-sm p-6 ${className}`}>
+      {children}
     </div>
   );
 
-  const renderCredentialsStep = () => (
-    <div className="credentials-step">
-      <div className="success-icon"><FaCheck/></div>
-      <h2>Admin Access Ready!</h2>
-      
-      <div className="credentials-box">
-        <div className="credential-field">
-          <label>Email</label>
-          <div className="value">{generatedCredentials.email}</div>
-        </div>
-        
-        <div className="credential-field">
-          <label>Password</label>
-          <div className="password-input">
-            <input
-              type={showPassword ? "text" : "password"}
-              value={generatedCredentials.password}
-              readOnly
-            />
-            <button onClick={() => setShowPassword(!showPassword)}>
-              {showPassword ? <FaEyeSlash/> : <FaEye/>}
-            </button>
+  // Error alert component
+  const ErrorAlert = ({ message }) => {
+    if (!message) return null;
+    return (
+      <div className="mb-4 p-3 bg-red-50 border-l-4 border-red-500 text-red-700 rounded flex items-start">
+        <span className="mr-2 mt-0.5">⚠️</span>
+        <span>{message}</span>
+      </div>
+    );
+  };
+
+  // Success alert component
+  const SuccessAlert = ({ message }) => {
+    if (!message) return null;
+    return (
+      <div className="mb-4 p-3 bg-green-50 border-l-4 border-green-500 text-green-700 rounded flex items-start">
+        <span className="mr-2 mt-0.5">✅</span>
+        <span>{message}</span>
+      </div>
+    );
+  };
+
+  // Input field with label and error handling
+  const InputField = ({ 
+    label, 
+    type = "text", 
+    name, 
+    value, 
+    onChange, 
+    error, 
+    placeholder,
+    icon, 
+    maxLength,
+    readOnly = false,
+    rightElement = null
+  }) => (
+    <div className="mb-4">
+      <label className="block text-gray-700 text-sm font-medium mb-2">{label}</label>
+      <div className="relative">
+        {icon && (
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            {icon}
           </div>
-        </div>
-        
-        <div className="credential-field">
-          <label>Valid Until</label>
-          <div className="value">{generatedCredentials.expiryDate}</div>
-        </div>
+        )}
+        <input
+          type={type}
+          name={name}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          maxLength={maxLength}
+          readOnly={readOnly}
+          className={`w-full ${icon ? 'pl-10' : 'pl-4'} pr-4 py-3 border ${error ? 'border-red-300' : 'border-gray-300'} 
+            rounded-lg focus:ring-blue-500 focus:border-blue-500 ${readOnly ? 'bg-gray-50' : ''}`}
+        />
+        {rightElement && (
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+            {rightElement}
+          </div>
+        )}
       </div>
-      
-      <button onClick={() => setCurrentStep(5)}>
-        Continue to Login
+      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+    </div>
+  );
+
+  // Button component for consistent styling
+  const Button = ({ 
+    onClick, 
+    disabled = false, 
+    isLoading = false, 
+    variant = "primary", // primary, secondary, success
+    fullWidth = false,
+    className = "",
+    children 
+  }) => {
+    const baseClasses = "py-3 px-6 rounded-xl font-medium transition-all duration-200 ease-in-out";
+    const widthClass = fullWidth ? "w-full" : "";
+    
+    const variantClasses = {
+      primary: `bg-blue-600 hover:bg-blue-700 text-white ${disabled || isLoading ? 'opacity-70 cursor-not-allowed' : ''}`,
+      secondary: `bg-gray-200 hover:bg-gray-300 text-gray-700 ${disabled || isLoading ? 'opacity-70 cursor-not-allowed' : ''}`,
+      success: `bg-green-600 hover:bg-green-700 text-white ${disabled || isLoading ? 'opacity-70 cursor-not-allowed' : ''}`
+    };
+    
+    return (
+      <button
+        onClick={onClick}
+        disabled={disabled || isLoading}
+        className={`${baseClasses} ${widthClass} ${variantClasses[variant]} ${className}`}
+      >
+        <div className="flex items-center justify-center space-x-2">
+          {isLoading && (
+            <svg className="animate-spin h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          )}
+          <span>{children}</span>
+        </div>
       </button>
-    </div>
-  );
+    );
+  };
 
-  const renderLoginStep = () => (
-    <div className="login-step">
-      <h2>Admin Login</h2>
-      {errors.general && <div className="error-message">{errors.general}</div>}
-      
-      <form onSubmit={handleLoginSubmit}>
-        <div className="input-group">
-          <FaEnvelope/>
-          <input
-            name="email"
-            type="email"
-            placeholder="Email"
-            value={loginData.email}
-            onChange={(e) => setLoginData({...loginData, email: e.target.value})}
-            required
-          />
-        </div>
-        
-        <div className="input-group">
-          <FaLock/>
-          <input
-            name="password"
-            type={showPassword ? "text" : "password"}
-            placeholder="Password"
-            value={loginData.password}
-            onChange={(e) => setLoginData({...loginData, password: e.target.value})}
-            required
-          />
-          <button 
-            type="button" 
-            className="password-toggle"
-            onClick={() => setShowPassword(!showPassword)}
-          >
-            {showPassword ? <FaEyeSlash/> : <FaEye/>}
-          </button>
-        </div>
-        
-        <button type="submit" disabled={isLoading}>
-          {isLoading ? 'Logging In...' : 'Login'}
-        </button>
-      </form>
-    </div>
-  );
-
-  return (
-    <div className="admin-container">
-      <header>
-        <h1>Shree Industry Admin Dashboard</h1>
-        <p>Access your administration tools</p>
-      </header>
-
-      {currentStep < 5 && (
-        <div className="progress-steps">
-          {['Select Plan', 'Payment', 'Verification', 'Credentials'].map((step, index) => (
-            <div key={step} className={`step ${index < currentStep - 1 ? 'completed' : ''} 
-              ${index === currentStep - 1 ? 'active' : ''}`}>
-              <div className="step-marker">{index < currentStep - 1 ? <FaCheck/> : index + 1}</div>
-              <div className="step-label">{step}</div>
+  // Progress steps component
+  const ProgressSteps = () => {
+    const steps = [
+      { label: "Select Plan", icon: <FaCrown /> },
+      { label: "Payment", icon: <FaCreditCard /> },  
+      { label: "Verification", icon: <FaShieldAlt /> }, 
+      { label: "Credentials", icon: <FaLock /> }
+    ];
+    
+    return (
+      <div className="max-w-3xl mx-auto mb-8">
+        <div className="flex justify-between">
+          {steps.map((step, index) => (
+            <div key={index} className="flex flex-1 items-center">
+              <div className="relative flex flex-col items-center flex-1">
+                <div className={`
+                  z-10 w-10 h-10 flex items-center justify-center rounded-full 
+                  text-xs font-medium border-2 transition-all
+                  ${index + 1 < currentStep 
+                    ? 'bg-green-500 border-green-500 text-white' 
+                    : index + 1 === currentStep 
+                      ? 'bg-blue-500 border-blue-500 text-white' 
+                      : 'bg-white border-gray-300 text-gray-500'}
+                `}>
+                  {index + 1 < currentStep ? <FaCheck /> : step.icon}
+                </div>
+                <div className="mt-2 hidden sm:block">
+                  <span className={`text-xs font-medium ${index + 1 === currentStep ? 'text-blue-600' : 'text-gray-500'}`}>
+                    {step.label}
+                  </span>
+                </div>
+                {index < steps.length - 1 && (
+                  <div className={`absolute top-5 left-1/2 w-full h-1 ${
+                    index + 1 < currentStep ? 'bg-green-500' : 'bg-gray-300'
+                  }`}></div>
+                )}
+              </div>
             </div>
           ))}
         </div>
-      )}
+      </div>
+    );
+  };
 
-      <main>
-        {currentStep === 1 && (
-          <div className="plan-selection">
-            <div className="plan-grid">{renderPlanCards()}</div>
+  // Render steps based on current step
+  const renderCurrentStep = () => {
+    switch (currentStep) {
+      case 1: // Plan Selection & Customer Information
+        return (
+          <div className="space-y-6">
+            <div className="flex flex-col md:flex-row justify-between items-start mb-6 gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2 flex items-center">
+                  <FaCrown className="text-yellow-500 mr-3" />
+                  Choose Your Plan
+                </h2>
+                <p className="text-gray-600">Select the subscription plan that works best for you</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setCurrentStep(5);
+                  window.scrollTo(0, 0);
+                }}
+                className="text-blue-600 hover:text-blue-700 text-sm flex items-center"
+              >
+                <FaArrowLeft className="mr-2" /> Existing User? Login
+              </button>
+            </div>
             
-            {selectedPlan === 'custom' && (
-              <div className="custom-amount-input">
-                <h3>Enter Custom Amount</h3>
-                <div className="input-group">
-                  <FaRupeeSign/>
-                  <input
-                    type="number"
+            <ErrorAlert message={errors.general} />
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              {renderPlanCards()}
+            </div>
+            
+            {isCustomPayment && (
+              <Card className="bg-blue-50 mb-6">
+                <h3 className="text-gray-800 font-medium mb-3">Enter Custom Amount</h3>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                    <FaRupeeSign className="text-gray-500" />
+                  </div>
+                  <input 
+                    type="text"
                     value={customAmount}
                     onChange={handleCustomAmountChange}
-                    placeholder={`Minimum ₹${MIN_AMOUNT}`}
-                    min={MIN_AMOUNT}
+                    placeholder={`Minimum ₹${MIN_AMOUNT.toLocaleString()}`}
+                    className="pl-8 py-3 w-full border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                {amountError && <div className="error">{amountError}</div>}
-              </div>
+                {amountError && <p className="text-red-500 text-sm mt-1">{amountError}</p>}
+                <p className="text-gray-600 text-sm mt-2">
+                  Note: Payment processing requires a minimum amount of ₹{MIN_AMOUNT.toLocaleString()}
+                </p>
+              </Card>
             )}
             
-            <button 
-              className="proceed-button"
+            {/* Customer Information Form */}
+            <Card className="bg-gradient-to-br from-blue-50 to-white mb-6">
+              <h3 className="text-gray-800 font-medium mb-4">Your Information</h3>
+              
+              <div className="space-y-4">
+                <InputField
+                  label="Full Name"
+                  value={customerName}
+                  onChange={(e) => {
+                    setCustomerName(e.target.value);
+                    setCustomerNameError('');
+                  }}
+                  error={customerNameError}
+                  placeholder="Enter your full name"
+                  icon={<FaUserAlt className="text-gray-400" />}
+                />
+                
+                <InputField
+                  label="Email Address"
+                  type="email"
+                  value={customerEmail}
+                  onChange={(e) => {
+                    setCustomerEmail(e.target.value);
+                    setCustomerEmailError('');
+                  }}
+                  error={customerEmailError}
+                  placeholder="Enter your email"
+                  icon={<FaEnvelope className="text-gray-400" />}
+                />
+                
+                <div className="mb-4">
+                  <label className="block text-gray-700 text-sm font-medium mb-2">Phone Number</label>
+                  <div className="relative flex">
+                    <div className="flex items-center justify-center px-3 border border-r-0 border-gray-300 bg-gray-50 rounded-l-lg">
+                      <span className="text-gray-500 font-medium">+91</span>
+                    </div>
+                    <div className="relative flex-1">
+                      <FaPhone className="absolute left-3 top-3 text-gray-400" />
+                      <input
+                        type="tel"
+                        value={customerPhone}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^0-9]/g, '');
+                          setCustomerPhone(value);
+                          setCustomerPhoneError('');
+                        }}
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-r-lg focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="10-digit mobile number"
+                        maxLength={10}
+                      />
+                    </div>
+                  </div>
+                  {customerPhoneError && <p className="text-red-500 text-sm mt-1">{customerPhoneError}</p>}
+                </div>
+              </div>
+              
+              <div className="mt-4 p-3 rounded-lg border border-blue-100 bg-blue-50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-1">
+                      Your Customer ID:
+                    </p>
+                    <p className="font-mono bg-white px-3 py-1 rounded border border-blue-100">
+                      {customerId}
+                    </p>
+                  </div>
+                  <button 
+                    onClick={copyCustomerId} 
+                    className="bg-white text-blue-600 hover:text-blue-700 p-2 rounded-lg border border-blue-100 hover:border-blue-300 transition-colors"
+                    aria-label="Copy Customer ID"
+                  >
+                    {copiedCustomerId ? <FaCheck size={16} /> : <FaCopy size={16} />}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Please save this ID for future reference and support inquiries.
+                </p>
+              </div>
+            </Card>
+            
+            <Button
               onClick={handleProceedToPayment}
-              disabled={selectedPlan === 'custom' && (!customAmount || parseInt(customAmount) < MIN_AMOUNT)}
+              disabled={isCustomPayment && (!customAmount || parseInt(customAmount) < MIN_AMOUNT)}
+              fullWidth
             >
               Proceed to Payment
-            </button>
+            </Button>
           </div>
-        )}
+        );
+        
+      case 2: // Payment Screen
+        return (
+          <div className="space-y-6">
+            <button 
+              onClick={() => {
+                setCurrentStep(1);
+                window.scrollTo(0, 0);
+              }}
+              className="text-blue-600 hover:text-blue-700 mb-6 flex items-center"
+            >
 
-        {currentStep === 2 && renderPaymentStep()}
-        {currentStep === 3 && (
-          <div className="verification-success">
-            <FaCheck className="success-icon"/>
-            <h2>Payment Verified!</h2>
-            <p>Your payment of ₹{amount.toLocaleString()} has been successfully processed.</p>
-            <button onClick={generateCredentials} disabled={isLoading}>
-              {isLoading ? 'Generating...' : 'Generate Admin Credentials'}
+              <FaArrowLeft className="mr-2" /> Back to Plan Selection
             </button>
+            
+            <h2 className="text-2xl font-bold text-gray-800 mb-2 flex items-center">
+              <FaRupeeSign className="text-green-500 mr-3" />
+              Complete Payment
+            </h2>
+            
+            <ErrorAlert message={errors.general} />
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Payment QR Code Card */}
+              <Card className="bg-gradient-to-br from-blue-50 to-white">
+                <div className="text-center">
+                  <h3 className="text-gray-800 font-medium mb-3">Scan QR Code to Pay</h3>
+                  
+                  <div className="font-bold text-2xl text-blue-700 mb-4">
+                    ₹{amount.toLocaleString()}
+                  </div>
+                  
+                  <div className="bg-white p-3 rounded-xl border border-gray-200 inline-block mb-4">
+                    {qr ? (
+                      <img 
+                        src={qr} 
+                        alt="UPI Payment QR Code" 
+                        className="w-48 h-48 object-contain"
+                      />
+                    ) : (
+                      <div className="w-48 h-48 flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center justify-center mb-4">
+                    <div className="text-gray-700 font-medium">UPI ID: {upiId}</div>
+                    <button 
+                      onClick={copyUpiId} 
+                      className="ml-2 text-blue-600 hover:text-blue-700"
+                      aria-label="Copy UPI ID"
+                    >
+                      {copiedUpi ? <FaCheck size={14} /> : <FaCopy size={14} />}
+                    </button>
+                  </div>
+                  
+                  <div className="text-sm text-gray-600 mb-3">Payment will be processed in the name of</div>
+                  <div className="font-semibold mb-4">{name}</div>
+                  
+                  <div className="text-sm text-gray-600 mb-4">Use any UPI app</div>
+                  
+                  <div className="flex justify-center flex-wrap gap-3">
+                    {paymentApps.map((app) => (
+                      <div 
+                        key={app.name}
+                        className="bg-white rounded-lg shadow-sm border border-gray-100 px-3 py-2 text-sm"
+                        style={{ color: app.color }}
+                      >
+                        {app.name}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Card>
+              
+              {/* Payment Verification Card */}
+              <Card>
+                <h3 className="text-gray-800 font-medium mb-4">Verify Your Payment</h3>
+                
+                <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-yellow-700">
+                        After making the payment, enter your transaction ID below to verify your payment.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <InputField
+                  label="Transaction ID"
+                  value={transactionId}
+                  onChange={handleTransactionIdChange}
+                  error={transactionError}
+                  placeholder="Enter transaction ID from your payment app"
+                  icon={<FaReceipt className="text-gray-400" />}
+                />
+                
+                <InputField
+                  label="Customer ID"
+                  value={customerId}
+                  readOnly={true}
+                  placeholder="Your customer ID"
+                  icon={<FaUserAlt className="text-gray-400" />}
+                  rightElement={
+                    <button onClick={copyCustomerId} className="text-blue-600 hover:text-blue-700">
+                      {copiedCustomerId ? <FaCheck size={14} /> : <FaCopy size={14} />}
+                    </button>
+                  }
+                />
+                
+                <div className="text-sm text-gray-500 mb-6">
+                  <span className="font-medium">Selected Plan:</span> {plans[selectedPlan].label} - 
+                  <span className="font-medium text-blue-600"> ₹{amount.toLocaleString()}</span>
+                </div>
+                
+                <Button 
+                  onClick={handlePaymentVerification}
+                  disabled={!transactionId.trim()}
+                  isLoading={paymentVerifying}
+                  fullWidth
+                >
+                  Verify Payment
+                </Button>
+              </Card>
+            </div>
           </div>
-        )}
-        {currentStep === 4 && renderCredentialsStep()}
-        {currentStep === 5 && renderLoginStep()}
-      </main>
+        );
+        
+      case 3: // Payment Verification Success
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2 flex items-center">
+              <FaShieldAlt className="text-green-500 mr-3" />
+              Payment Verification
+            </h2>
+            
+            <Card className="text-center py-8">
+              <div className="flex justify-center mb-6">
+                <div className="bg-green-100 p-4 rounded-full">
+                  <FaCheckCircle className="text-green-500 text-4xl" />
+                </div>
+              </div>
+              
+              <h3 className="text-xl font-bold text-gray-800 mb-2">
+                Payment Successfully Verified!
+              </h3>
+              
+              <p className="text-gray-600 mb-6">
+                Your payment of <span className="font-medium">₹{amount.toLocaleString()}</span> has been successfully verified.
+                We are now processing your subscription activation.
+              </p>
+              
+              <div className="mb-6 p-4 bg-blue-50 rounded-lg max-w-md mx-auto">
+                <div className="text-sm text-left mb-2">
+                  <div className="flex justify-between mb-1">
+                    <span className="text-gray-600">Customer ID:</span>
+                    <span className="font-medium">{customerId}</span>
+                  </div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-gray-600">Plan:</span>
+                    <span className="font-medium">{plans[selectedPlan].label}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Amount Paid:</span>
+                    <span className="font-medium">₹{amount.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <Button
+                onClick={generateCredentials}
+                isLoading={isLoading}
+                variant="success"
+              >
+                Generate Your Login Credentials
+              </Button>
+            </Card>
+          </div>
+        );
+        
+      case 4: // Generated Credentials
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2 flex items-center">
+              <FaLock className="text-purple-500 mr-3" />
+              Your Login Credentials
+            </h2>
+            
+            <Card className="bg-gradient-to-br from-blue-50 to-white">
+              <div className="text-center mb-6">
+                <div className="bg-blue-100 inline-block p-4 rounded-full mb-4">
+                  <svg className="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-gray-800 mb-2">
+                  Your Account is Ready!
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  Please save these login credentials securely. You'll need them to access your admin panel.
+                </p>
+              </div>
+              
+              <div className="bg-white p-6 border border-gray-200 rounded-lg mb-6">
+                <div className="mb-4">
+                  <label className="block text-gray-500 text-sm mb-1">Email Address</label>
+                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded border border-gray-200">
+                    <span className="font-medium">{generatedCredentials.email}</span>
+                  </div>
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block text-gray-500 text-sm mb-1">Password</label>
+                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded border border-gray-200">
+                    <div className="font-mono font-medium">
+                      {showPassword ? generatedCredentials.password : '•'.repeat(generatedCredentials.password.length)}
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="text-gray-500 hover:text-gray-700"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
+                      </button>
+                      <button 
+                        onClick={copyPassword} 
+                        className="text-blue-600 hover:text-blue-700"
+                        aria-label="Copy password"
+                      >
+                        <FaCopy size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-gray-500 text-sm mb-1">Subscription Valid Until</label>
+                  <div className="p-3 bg-gray-50 rounded border border-gray-200">
+                    <span className="font-medium">{generatedCredentials.expiryDate}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Button
+                  onClick={() => {
+                    setCurrentStep(5);
+                    window.scrollTo(0, 0);
+                  }}
+                  fullWidth
+                >
+                  Proceed to Login
+                </Button>
+                
+                <Button
+                  onClick={() => {
+                    router.push('/');
+                  }}
+                  variant="secondary"
+                  fullWidth
+                >
+                  Back to Homepage
+                </Button>
+              </div>
+            </Card>
+          </div>
+        );
+        
+      case 5: // Login Form
+        return (
+          <div className="space-y-6 max-w-md mx-auto">
+            <button 
+              onClick={() => {
+                setCurrentStep(1);
+                window.scrollTo(0, 0);
+              }}
+              className="text-blue-600 hover:text-blue-700 mb-4 flex items-center"
+            >
+              <FaArrowLeft className="mr-2" /> Need to register? Go back
+            </button>
+            
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+              Login to Admin Panel
+            </h2>
+            
+            <Card>
+              <ErrorAlert message={errors.general} />
+              
+              <form onSubmit={handleLoginSubmit}>
+                <InputField
+                  label="Email Address"
+                  type="email"
+                  name="email"
+                  value={loginData.email}
+                  onChange={handleLoginChange}
+                  error={errors.email}
+                  placeholder="Enter your email"
+                  icon={<FaEnvelope className="text-gray-400" />}
+                />
+                
+                <div className="mb-4">
+                  <label className="block text-gray-700 text-sm font-medium mb-2">Password</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <FaLock className="text-gray-400" />
+                    </div>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      value={loginData.password}
+                      onChange={handleLoginChange}
+                      placeholder="Enter your password"
+                      className={`w-full pl-10 pr-12 py-3 border ${errors.password ? 'border-red-300' : 'border-gray-300'} 
+                        rounded-lg focus:ring-blue-500 focus:border-blue-500`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
+                    >
+                      {showPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
+                    </button>
+                  </div>
+                  {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+                </div>
+                
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center">
+                    <input
+                      id="remember"
+                      name="remember"
+                      type="checkbox"
+                      checked={loginData.remember}
+                      onChange={handleLoginChange}
+                      className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <label htmlFor="remember" className="ml-2 block text-sm text-gray-700">
+                      Remember me
+                    </label>
+                  </div>
+                  
+                  <div className="text-sm">
+                    <a href="#" className="text-blue-600 hover:text-blue-700">
+                      Forgot password?
+                    </a>
+                  </div>
+                </div>
+                
+                <Button 
+                  type="submit"
+                  isLoading={isLoading}
+                  fullWidth
+                >
+                  Sign In
+                </Button>
+              </form>
+              
+              <div className="mt-4 text-center text-sm text-gray-600">
+                Having issues? Contact support at <a href="mailto:support@techvisiona.com" className="text-blue-600 hover:text-blue-700">support@techvisiona.com</a>
+              </div>
+            </Card>
+          </div>
+        );
+        
+      default:
+        return null;
+    }
+  };
 
-      <style jsx>{`
-        .admin-container {
-          max-width: 1200px;
-          margin: 0 auto;
-          padding: 2rem;
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        header {
-          text-align: center;
-          margin-bottom: 2rem;
-        }
-        
-        header h1 {
-          color: #2c3e50;
-          margin-bottom: 0.5rem;
-        }
-        
-        header p {
-          color: #7f8c8d;
-          font-size: 1.1rem;
-        }
-        
-        .progress-steps {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 3rem;
-          position: relative;
-        }
-        
-        .progress-steps::before {
-          content: '';
-          position: absolute;
-          top: 20px;
-          left: 0;
-          right: 0;
-          height: 2px;
-          background: #ecf0f1;
-          z-index: 0;
-        }
-        
-        .step {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          position: relative;
-          z-index: 1;
-        }
-        
-        .step-marker {
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          background: #ecf0f1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: bold;
-          color: #7f8c8d;
-          margin-bottom: 0.5rem;
-        }
-        
-        .step.active .step-marker {
-          background: #3498db;
-          color: white;
-        }
-        
-        .step.completed .step-marker {
-          background: #2ecc71;
-          color: white;
-        }
-        
-        .step-label {
-          font-size: 0.9rem;
-          color: #7f8c8d;
-          font-weight: 500;
-        }
-        
-        .step.active .step-label {
-          color: #3498db;
-          font-weight: 600;
-        }
-        
-        .step.completed .step-label {
-          color: #2ecc71;
-        }
-        
-        .plan-selection {
-          display: flex;
-          flex-direction: column;
-          gap: 2rem;
-        }
-        
-        .plan-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-          gap: 1.5rem;
-        }
-        
-        .plan-card {
-          border: 1px solid #ddd;
-          border-radius: 8px;
-          padding: 1.5rem;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          position: relative;
-        }
-        
-        .plan-card:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        }
-        
-        .plan-card.selected {
-          border-color: #3498db;
-          background-color: #f8fafc;
-        }
-        
-        .popular-badge {
-          position: absolute;
-          top: -10px;
-          right: 10px;
-          background: #f39c12;
-          color: white;
-          padding: 0.25rem 0.75rem;
-          border-radius: 20px;
-          font-size: 0.75rem;
-          font-weight: bold;
-        }
-        
-        .plan-card h3 {
-          margin-top: 0.5rem;
-          margin-bottom: 1rem;
-          color: #2c3e50;
-        }
-        
-        .price {
-          font-size: 1.5rem;
-          font-weight: bold;
-          color: #27ae60;
-          margin-bottom: 1rem;
-        }
-        
-        .plan-card ul {
-          list-style: none;
-          padding: 0;
-          margin: 0;
-        }
-        
-        .plan-card ul li {
-          margin-bottom: 0.5rem;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          color: #34495e;
-        }
-        
-        .plan-card ul li svg {
-          color: #2ecc71;
-        }
-        
-        .custom-amount-input {
-          margin-top: 1rem;
-          padding: 1.5rem;
-          border: 1px dashed #bdc3c7;
-          border-radius: 8px;
-          background: #f9f9f9;
-        }
-        
-        .custom-amount-input h3 {
-          margin-top: 0;
-          margin-bottom: 1rem;
-          color: #2c3e50;
-        }
-        
-        .input-group {
-          display: flex;
-          align-items: center;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          padding: 0.5rem 1rem;
-          margin-bottom: 1rem;
-          background: white;
-        }
-        
-        .input-group svg, .input-group span {
-          margin-right: 0.5rem;
-          color: #7f8c8d;
-        }
-        
-        .input-group input {
-          border: none;
-          outline: none;
-          flex: 1;
-          font-size: 1rem;
-        }
-        
-        .proceed-button {
-          background: #3498db;
-          color: white;
-          border: none;
-          padding: 0.75rem 1.5rem;
-          border-radius: 4px;
-          font-size: 1rem;
-          cursor: pointer;
-          transition: background 0.3s;
-          width: 100%;
-          margin-top: 1rem;
-        }
-        
-        .proceed-button:hover {
-          background: #2980b9;
-        }
-        
-        .proceed-button:disabled {
-          background: #bdc3c7;
-          cursor: not-allowed;
-        }
-        
-        .payment-step {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 2rem;
-        }
-        
-        .customer-id {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          background: #f8f9fa;
-          padding: 0.5rem 1rem;
-          border-radius: 4px;
-          font-size: 0.9rem;
-        }
-        
-        .customer-id button {
-          background: none;
-          border: none;
-          cursor: pointer;
-          color: #7f8c8d;
-        }
-        
-        .qr-section {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 1rem;
-        }
-        
-        .qr-section img {
-          width: 200px;
-          height: 200px;
-          border: 1px solid #ddd;
-          border-radius: 8px;
-          padding: 1rem;
-        }
-        
-        .loading-qr {
-          width: 200px;
-          height: 200px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border: 1px dashed #ddd;
-          border-radius: 8px;
-          color: #7f8c8d;
-        }
-        
-        .upi-details {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 1rem;
-        }
-        
-        .upi-id {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          background: #f8f9fa;
-          padding: 0.5rem 1rem;
-          border-radius: 4px;
-          font-family: monospace;
-        }
-        
-        .upi-id button {
-          background: none;
-          border: none;
-          cursor: pointer;
-          color: #7f8c8d;
-        }
-        
-        .payment-apps {
-          display: flex;
-          gap: 0.5rem;
-          flex-wrap: wrap;
-          justify-content: center;
-        }
-        
-        .payment-app {
-          padding: 0.25rem 0.75rem;
-          border-radius: 4px;
-          border: 1px solid;
-          font-size: 0.8rem;
-          font-weight: 500;
-        }
-        
-        .amount-display {
-          display: flex;
-          align-items: center;
-          gap: 0.25rem;
-          font-size: 1.5rem;
-          font-weight: bold;
-          color: #27ae60;
-        }
-        
-        .custom-amount {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 0.5rem;
-        }
-        
-        .custom-amount input {
-          padding: 0.5rem 1rem;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          font-size: 1rem;
-          text-align: center;
-          width: 150px;
-        }
-        
-        .verification-section {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 1rem;
-          width: 100%;
-          max-width: 400px;
-        }
-        
-        .verification-section input {
-          padding: 0.75rem 1rem;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          font-size: 1rem;
-          width: 100%;
-        }
-        
-        .verification-section button {
-          background: #2ecc71;
-          color: white;
-          border: none;
-          padding: 0.75rem 1.5rem;
-          border-radius: 4px;
-          font-size: 1rem;
-          cursor: pointer;
-          transition: background 0.3s;
-          width: 100%;
-        }
-        
-        .verification-section button:hover {
-          background: #27ae60;
-        }
-        
-        .verification-section button:disabled {
-          background: #bdc3c7;
-          cursor: not-allowed;
-        }
-        
-        .verification-success {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 1.5rem;
-          text-align: center;
-        }
-        
-        .verification-success .success-icon {
-          font-size: 3rem;
-          color: #2ecc71;
-        }
-        
-        .verification-success h2 {
-          color: #2c3e50;
-          margin: 0;
-        }
-        
-        .verification-success p {
-          color: #7f8c8d;
-          max-width: 400px;
-        }
-        
-        .verification-success button {
-          background: #3498db;
-          color: white;
-          border: none;
-          padding: 0.75rem 1.5rem;
-          border-radius: 4px;
-          font-size: 1rem;
-          cursor: pointer;
-          transition: background 0.3s;
-        }
-        
-        .verification-success button:hover {
-          background: #2980b9;
-        }
-        
-        .verification-success button:disabled {
-          background: #bdc3c7;
-          cursor: not-allowed;
-        }
-        
-        .credentials-step {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 2rem;
-          text-align: center;
-        }
-        
-        .credentials-step .success-icon {
-          font-size: 3rem;
-          color: #2ecc71;
-        }
-        
-        .credentials-step h2 {
-          color: #2c3e50;
-          margin: 0;
-        }
-        
-        .credentials-box {
-          background: #f8f9fa;
-          border-radius: 8px;
-          padding: 1.5rem;
-          width: 100%;
-          max-width: 400px;
-        }
-        
-        .credential-field {
-          margin-bottom: 1.5rem;
-        }
-        
-        .credential-field label {
-          display: block;
-          margin-bottom: 0.5rem;
-          font-weight: 500;
-          color: #7f8c8d;
-          text-align: left;
-        }
-        
-        .credential-field .value {
-          background: white;
-          padding: 0.75rem 1rem;
-          border-radius: 4px;
-          border: 1px solid #ddd;
-          text-align: left;
-          font-family: monospace;
-        }
-        
-        .password-input {
-          display: flex;
-          align-items: center;
-          background: white;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          overflow: hidden;
-        }
-        
-        .password-input input {
-          flex: 1;
-          border: none;
-          outline: none;
-          padding: 0.75rem 1rem;
-          font-family: monospace;
-        }
-        
-        .password-input button {
-          background: none;
-          border: none;
-          padding: 0 1rem;
-          cursor: pointer;
-          color: #7f8c8d;
-        }
-        
-        .credentials-step button {
-          background: #3498db;
-          color: white;
-          border: none;
-          padding: 0.75rem 1.5rem;
-          border-radius: 4px;
-          font-size: 1rem;
-          cursor: pointer;
-          transition: background 0.3s;
-        }
-        
-        .credentials-step button:hover {
-          background: #2980b9;
-        }
-        
-        .login-step {
-          max-width: 400px;
-          margin: 0 auto;
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-        
-        .login-step h2 {
-          color: #2c3e50;
-          text-align: center;
-          margin-bottom: 0.5rem;
-        }
-        
-        .login-step form {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-        
-        .error-message {
-          color: #e74c3c;
-          background: #fdeded;
-          padding: 0.75rem 1rem;
-          border-radius: 4px;
-          text-align: center;
-        }
-        
-        .login-step .input-group {
-          position: relative;
-        }
-        
-        .login-step .password-toggle {
-          position: absolute;
-          right: 1rem;
-          background: none;
-          border: none;
-          cursor: pointer;
-          color: #7f8c8d;
-        }
-        
-        .login-step button[type="submit"] {
-          background: #2ecc71;
-          color: white;
-          border: none;
-          padding: 0.75rem;
-          border-radius: 4px;
-          font-size: 1rem;
-          cursor: pointer;
-          transition: background 0.3s;
-        }
-        
-        .login-step button[type="submit"]:hover {
-          background: #27ae60;
-        }
-        
-        .login-step button[type="submit"]:disabled {
-          background: #bdc3c7;
-          cursor: not-allowed;
-        }
-        
-        .error {
-          color: #e74c3c;
-          font-size: 0.9rem;
-          margin-top: 0.25rem;
-        }
-      `}</style>
+  return (
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Shree Industry Admin Panel</h1>
+          <p className="text-gray-600">Manage your business with our powerful admin tools</p>
+        </div>
+        
+        {/* Progress Steps (only show if not on login step) */}
+        {currentStep !== 5 && <ProgressSteps />}
+        
+        {/* Dynamic Content Based on Current Step */}
+        {renderCurrentStep()}
+      </div>
     </div>
   );
 }
