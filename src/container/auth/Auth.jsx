@@ -21,8 +21,7 @@ import { createClient } from "@supabase/supabase-js";
 import { generateUpiQr } from '@/utils/generateUpiQr';
 import { v4 as uuidv4 } from 'uuid';
 
-// Custom CSS for enhanced UI across all devices
-import './admin-panel.css';
+
 
 export default function Login() {
   const router = useRouter();
